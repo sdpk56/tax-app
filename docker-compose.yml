@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:17 # <--- CHANGE THIS LINE to postgres:17
+    container_name: taxdb
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-yourpassword}
+      POSTGRES_DB: ${DB_NAME:-taxdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: tax-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy # Wait for postgres to be healthy
+    environment:
+      # Pass environment variables from host or .env file
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-yourpassword}@taxdb/${DB_NAME:-taxdb}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-very-secure-secret-key} # Use environment variable
+      FLASK_ENV: production # Set Flask environment
+      FLASK_APP: app.py # Specify the Flask app entry point for Gunicorn
+    ports:
+      - "5000:5000"
+    command: gunicorn --bind 0.0.0.0:5000 app:app # Use Gunicorn for production
+
+  frontend:
+    build: ./frontend
+    container_name: tax-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      # Pass the backend URL to the frontend
+      BACKEND_URL: http://tax-backend:5000
+    ports:
+      - "8000:8000" # Assuming frontend runs on 8080, adjust if it's 8000 as per previous discussion
+
+volumes:
+  postgres_data:

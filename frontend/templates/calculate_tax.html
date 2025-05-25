@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Calculate Tax{% endblock %}
+
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="mt-5 mb-3 text-center">Calculate Your Tax</h2>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="income">Income:</label>
+                    <input type="number" class="form-control" id="income" name="income" placeholder="Enter your annual income" required min="0">
+                </div>
+                <div class="form-group">
+                    <label for="regime">Tax Regime:</label>
+                    <select class="form-control" id="regime" name="regime" required>
+                        <option value="">Select a regime</option>
+                        <option value="old">Old Regime</option>
+                        <option value="new">New Regime</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Calculate Tax</button>
+            </form>
+
+            {% if tax_result %}
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h3>Tax Calculation Result</h3>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Income:</strong> ₹{{ "{:,.2f}".format(tax_result.income) }}</p>
+                        <p><strong>Regime:</strong> {{ tax_result.regime|capitalize }}</p>
+                        <p><strong>Calculated Tax:</strong> <span class="font-weight-bold text-danger">₹{{ "{:,.2f}".format(tax_result.tax) }}</span></p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

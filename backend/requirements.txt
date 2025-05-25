@@ -1,0 +1,8 @@
+flask
+flask-jwt-extended
+flask-sqlalchemy
+psycopg2-binary
+requests
+python-dotenv
+Flask-Cors # Added for CORS support
+gunicorn # Added for production server
