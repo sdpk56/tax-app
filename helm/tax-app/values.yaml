@@ -2,49 +2,105 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# PostgreSQL Configuration
-postgres:
-  image: postgres:17
-  name: taxdb
-  user: postgres
-  # password: This should be set via Kubernetes secrets, NOT directly here
-  dbName: taxdb
-  storage: 1Gi # Size of the PVC for Postgres
-  servicePort: 5432
+replicaCount: 1
 
-# Backend Configuration
+image:
+  # Base image properties (these might be overridden by backend/frontend specific ones)
+  pullPolicy: IfNotPresent
+  # Tag is now controlled by CI/CD workflow, so it's a placeholder here or removed if always overridden
+
 backend:
   image:
-    repository: tax-backend
-    tag: latest # This will be overridden by the workflow for specific commit SHA/timestamp
-  containerPort: 5000
-  servicePort: 5000
-  # jwtSecretKey: This should be set via Kubernetes secrets, NOT directly here
-  flaskEnv: production
-  flaskApp: app.py
-  command: ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
-  replicas: 1
+    repository: tax-backend # This is the image name, not including username/registry prefix
+    tag: "latest" # Default tag, will be overridden by CI/CD's github.run_id
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5000 # Example port for your backend API
+  # Add other backend specific values here, e.g., resource limits
   resources:
     limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
       cpu: 200m
-      memory: 256Mi
-
-# Frontend Configuration
-frontend:
-  image:
-    repository: tax-frontend
-    tag: latest # This will be overridden by the workflow for specific commit SHA/timestamp
-  containerPort: 8000
-  servicePort: 8000
-  replicas: 1
-  serviceType: NodePort # Use NodePort for Minikube external access
-  resources:
-    limits:
-      cpu: 300m
       memory: 256Mi
     requests:
       cpu: 100m
       memory: 128Mi
+
+frontend:
+  image:
+    repository: tax-frontend # This is the image name, not including username/registry prefix
+    tag: "latest" # Default tag, will be overridden by CI/CD's github.run_id
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80 # Example port for your frontend (e.g., Nginx, React dev server, etc.)
+  # Add other frontend specific values here
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Database (PostgreSQL example)
+postgresql:
+  enabled: true
+  image: postgres:13
+  imagePullPolicy: IfNotPresent
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClassName: standard # Or your cluster's default storage class
+  # Do NOT put database password here. It will be managed via Kubernetes Secret.
+  # See the `secrets` section below and backend-deployment.yaml
+
+# Ingress configuration (if you use an Ingress controller)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# Kubernetes Secrets placeholders
+# IMPORTANT: DO NOT STORE ACTUAL SECRET VALUES HERE IN GIT.
+# These values are expected to be provided during helm install/upgrade
+# via --set secrets.jwtSecretKey="YOUR_SECRET" or a separate secrets file.
+secrets:
+  jwtSecretKey: "" # Placeholder for JWT secret key
+  dbPassword: ""   # Placeholder for Database password (e.g., PostgreSQL password)
+
+# Service Account, Pod Security Context, etc. (if needed)
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
