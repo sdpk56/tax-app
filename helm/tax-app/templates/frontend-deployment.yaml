@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tax-app.fullname" . }}-frontend-deployment
+  labels:
+    {{- include "tax-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tax-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "tax-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        env:
+        - name: BACKEND_URL
+          value: "http://{{ include "tax-app.fullname" . }}-backend-service:{{ .Values.backend.servicePort }}"
+        ports:
+        - containerPort: {{ .Values.frontend.containerPort }}
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}

@@ -1,0 +1,50 @@
+# Default values for tax-app.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# PostgreSQL Configuration
+postgres:
+  image: postgres:17
+  name: taxdb
+  user: postgres
+  # password: This should be set via Kubernetes secrets, NOT directly here
+  dbName: taxdb
+  storage: 1Gi # Size of the PVC for Postgres
+  servicePort: 5432
+
+# Backend Configuration
+backend:
+  image:
+    repository: tax-backend
+    tag: latest # This will be overridden by the workflow for specific commit SHA/timestamp
+  containerPort: 5000
+  servicePort: 5000
+  # jwtSecretKey: This should be set via Kubernetes secrets, NOT directly here
+  flaskEnv: production
+  flaskApp: app.py
+  command: ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Frontend Configuration
+frontend:
+  image:
+    repository: tax-frontend
+    tag: latest # This will be overridden by the workflow for specific commit SHA/timestamp
+  containerPort: 8000
+  servicePort: 8000
+  replicas: 1
+  serviceType: NodePort # Use NodePort for Minikube external access
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi

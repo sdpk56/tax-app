@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tax-app.fullname" . }}-backend-deployment
+  labels:
+    {{- include "tax-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "tax-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "tax-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://{{ .Values.postgres.user }}:$(DB_PASSWORD_SECRET)@{{ include "tax-app.fullname" . }}-postgres-service:{{ .Values.postgres.servicePort }}/{{ .Values.postgres.dbName }}"
+        - name: DB_PASSWORD_SECRET # Environment variable to hold the secret value
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "tax-app.fullname" . }}-secrets
+              key: db-password
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "tax-app.fullname" . }}-secrets
+              key: jwt-secret-key
+        - name: FLASK_ENV
+          value: {{ .Values.backend.flaskEnv | quote }}
+        - name: FLASK_APP
+          value: {{ .Values.backend.flaskApp | quote }}
+        ports:
+        - containerPort: {{ .Values.backend.containerPort }}
+        command: {{ .Values.backend.command | toYaml | nindent 8 }}
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}
