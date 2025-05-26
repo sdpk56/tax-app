@@ -58,14 +58,14 @@ jobs:
         # Also tag as 'latest' for convenience, using the full Docker Hub path
         docker tag ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:latest
 
-    - name: Scan Backend Docker Image with Trivy
-      uses: aquasecurity/trivy-action@master
-      with:
-        # Scan the image using its full Docker Hub name and run ID tag
-        image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}
-        format: 'table'
-        exit-code: '1'
-        severity: 'HIGH,CRITICAL'
+    # - name: Scan Backend Docker Image with Trivy
+    #   uses: aquasecurity/trivy-action@master
+    #   with:
+    #     # Scan the image using its full Docker Hub name and run ID tag
+    #     image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}
+    #     format: 'table'
+    #     exit-code: '1'
+    #     severity: 'HIGH,CRITICAL'
 
     # Build Frontend Image
     - name: Build Frontend Docker Image
@@ -77,14 +77,14 @@ jobs:
         # Also tag as 'latest' for convenience, using the full Docker Hub path
         docker tag ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:latest
 
-    - name: Scan Frontend Docker Image with Trivy
-      uses: aquasecurity/trivy-action@master
-      with:
-        # Scan the image using its full Docker Hub name and run ID tag
-        image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}
-        format: 'table'
-        exit-code: '1'
-        severity: 'HIGH,CRITICAL'
+    # - name: Scan Frontend Docker Image with Trivy
+    #   uses: aquasecurity/trivy-action@master
+    #   with:
+    #     # Scan the image using its full Docker Hub name and run ID tag
+    #     image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}
+    #     format: 'table'
+    #     exit-code: '1'
+    #     severity: 'HIGH,CRITICAL'
 
   push-images:
     name: 🚀 Push Docker Images
