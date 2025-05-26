@@ -86,13 +86,13 @@ jobs:
     #     exit-code: '1'
     #     severity: 'HIGH,CRITICAL'
 
-  push-images:
-    name: 🚀 Push Docker Images
-    runs-on: ubuntu-latest
-    needs: build-and-scan # This job depends on 'build-and-scan' completing successfully
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4 # Needed if you're not passing images as artifacts
+  # push-images:
+  #   name: 🚀 Push Docker Images
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-scan # This job depends on 'build-and-scan' completing successfully
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4 # Needed if you're not passing images as artifacts
 
     - name: Login to Docker Registry
       uses: docker/login-action@v3
