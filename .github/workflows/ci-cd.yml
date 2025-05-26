@@ -1,4 +1,4 @@
-name: CI: Code Quality, Build, Scan, Push, & Package (Docker Hub Naming)
+name: Code Quality, Build, Scan, Push, & Package (Docker Hub Naming)
 
 on:
   push:
