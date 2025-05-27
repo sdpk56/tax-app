@@ -13,4 +13,5 @@ postgres:
   dbname: taxdb
   user: postgres
   password: yourpassword
+  db: taxdb
   containerPort: 5432
