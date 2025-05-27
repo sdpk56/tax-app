@@ -29,7 +29,7 @@ jwt = JWTManager(app)
 init_db(app)
 
 # Enable CORS for all routes (adjust origins as needed for production)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 # For production, you might want to specify allowed origins:
 # CORS(app, resources={r"/*": {"origins": ["http://localhost:8080", "https://your-frontend-domain.com"]}})
 
