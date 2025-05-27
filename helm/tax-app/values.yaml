@@ -9,7 +9,7 @@ frontend:
   replicas: 1
 
 postgres:
-  image: postgres:latest
+  image: postgres:17
   dbname: taxdb
   user: postgres
   password: yourpassword
