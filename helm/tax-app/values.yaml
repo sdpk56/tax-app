@@ -11,6 +11,6 @@ frontend:
 postgres:
   image: postgres:latest
   dbname: taxdb
-  user: taxuser
-  password: securepassword
+  user: postgres
+  password: yourpassword
   containerPort: 5432
