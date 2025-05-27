@@ -1,116 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tax-app.fullname" . }}-backend-deployment
-  labels:
-    {{- include "tax-app.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+  name: backend
 spec:
   replicas: {{ .Values.backend.replicas }}
   selector:
     matchLabels:
-      {{- include "tax-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: b# helm/tax-app/templates/backend-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "tax-app.fullname" . }}-backend
-  labels:
-    {{- include "tax-app.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
-spec:
-  replicas: {{ .Values.replicaCount }} # Or a specific backend replica count
-  selector:
-    matchLabels:
-      {{- include "tax-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: backend
+      app: backend
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
-        {{- include "tax-app.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: backend
+        app: backend
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "tax-app.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: backend
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
-          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.backend.service.port }}
-              protocol: TCP
-          # --- IMPORTANT: Add this env section to consume secrets ---
+          image: {{ .Values.backend.image }}
           env:
-            # Inject JWT_SECRET_KEY from the secret
-            - name: JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "tax-app.fullname" . }}-secrets # Refers to the secret created above
-                  key: jwtSecretKey # The key within the secret
-            # Inject DB_PASSWORD from the secret
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "tax-app.fullname" . }}-secrets
-                  key: dbPassword
-            # Add other non-sensitive environment variables here if needed
-            # - name: MY_APP_CONFIG
-            #   value: "some_value"
-          # --- End of secret injection ---
-          resources:
-            {{- toYaml .Values.backend.resources | nindent 12 }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}ckend
-  template:
-    metadata:
-      labels:
-        {{- include "tax-app.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: backend
-    spec:
-      containers:
-      - name: backend
-        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
-        env:
-        - name: DATABASE_URL
-          value: "postgresql://{{ .Values.postgres.user }}:$(DB_PASSWORD_SECRET)@{{ include "tax-app.fullname" . }}-postgres-service:{{ .Values.postgres.servicePort }}/{{ .Values.postgres.dbName }}"
-        - name: DB_PASSWORD_SECRET # Environment variable to hold the secret value
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "tax-app.fullname" . }}-secrets
-              key: db-password
-        - name: JWT_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "tax-app.fullname" . }}-secrets
-              key: jwt-secret-key
-        - name: FLASK_ENV
-          value: {{ .Values.backend.flaskEnv | quote }}
-        - name: FLASK_APP
-          value: {{ .Values.backend.flaskApp | quote }}
-        ports:
-        - containerPort: {{ .Values.backend.containerPort }}
-        command: {{ .Values.backend.command | toYaml | nindent 8 }}
-        resources:
-          {{- toYaml .Values.backend.resources | nindent 10 }}
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@postgres-service:5432/{{ .Values.postgres.dbname }}"
+          ports:
+            - containerPort: {{ .Values.backend.containerPort }}

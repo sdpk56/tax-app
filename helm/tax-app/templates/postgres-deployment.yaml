@@ -1,41 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tax-app.fullname" . }}-postgres-deployment
-  labels:
-    {{- include "tax-app.labels" . | nindent 4 }}
-    app.kubernetes.io/component: postgres
+  name: postgres
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "tax-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: postgres
+      app: postgres
   template:
     metadata:
       labels:
-        {{- include "tax-app.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: postgres
+        app: postgres
     spec:
       containers:
-      - name: postgres
-        image: "{{ .Values.postgres.image }}"
-        env:
-        - name: POSTGRES_USER
-          value: {{ .Values.postgres.user | quote }}
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "tax-app.fullname" . }}-secrets # Referencing the secret created by the workflow
-              key: db-password
-        - name: POSTGRES_DB
-          value: {{ .Values.postgres.dbName | quote }}
-        ports:
-        - containerPort: {{ .Values.postgres.servicePort }}
-        volumeMounts:
-        - name: postgres-data
-          mountPath: /var/lib/postgresql/data
-      volumes:
-      - name: postgres-data
-        persistentVolumeClaim:
-          claimName: {{ include "tax-app.fullname" . }}-postgres-pvc
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          env:
+            - name: POSTGRES_DB
+              value: "{{ .Values.postgres.dbname }}"
+            - name: POSTGRES_USER
+              value: "{{ .Values.postgres.user }}"
+            - name: POSTGRES_PASSWORD
+              value: "{{ .Values.postgres.password }}"
+          ports:
+            - containerPort: {{ .Values.postgres.containerPort }}
