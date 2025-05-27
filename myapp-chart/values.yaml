@@ -7,7 +7,7 @@ frontend:
   port: 8000
 
 postgres:
-  image: postgres:13
+  image: postgres:17
   user: myuser
   password: mypassword
   db: mydb
