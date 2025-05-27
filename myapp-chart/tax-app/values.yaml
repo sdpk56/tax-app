@@ -1,0 +1,16 @@
+backend:
+  image: mydockd/tax-backend:latest
+  port: 5000
+
+frontend:
+  image: mydockd/tax-backend:latest
+  port: 8000
+
+postgres:
+  image: postgres:13
+  user: myuser
+  password: mypassword
+  db: mydb
+
+ingress:
+  host: myapp.local
