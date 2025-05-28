@@ -131,7 +131,7 @@ jobs:
     - name: Package Helm Chart
       run: |
         echo "Packaging Helm chart: tax-app"
-        helm package ./myapp-chart
+        helm package ./helm/tax-app
     - name: Upload Helm Chart Artifact
       uses: actions/upload-artifact@v4
       with:
