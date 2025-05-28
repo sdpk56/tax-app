@@ -1,0 +1,4 @@
+apiVersion: v2
+name: tax-app
+description: Helm chart for deploying tax calculation app
+version: 1.0.0

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: frontend
 spec:
-  replicas: 1
+  replicas: {{ .Values.frontend.replicas }}
   selector:
     matchLabels:
       app: frontend
@@ -16,7 +16,4 @@ spec:
         - name: frontend
           image: {{ .Values.frontend.image }}
           ports:
-            - containerPort: {{ .Values.frontend.port }}
-          env:
-            - name: BACKEND_API_URL
-              value: http://backend
+            - containerPort: {{ .Values.frontend.containerPort }}
