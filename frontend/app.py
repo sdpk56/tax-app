@@ -3,7 +3,7 @@ import requests
 
 app = Flask(__name__)
 app.secret_key = 'your-very-secure-secret-key'  # Replace with a strong, random secret key
-BACKEND_URL = "http://tax-backend:5000"  # Update this if your backend URL is different
+BACKEND_URL = "http://backend-service:5000"  # Update this if your backend URL is different
 
 @app.route('/')
 def index():
