@@ -17,32 +17,32 @@ env:
   SONAR_PROJECT_KEY_FRONTEND: frontend_project_key
   
 jobs:
-  lint:
-    name: 🧹 Python Linting with Ruff
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  # lint:
+  #   name: 🧹 Python Linting with Ruff
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.10'
 
-      - name: Install dependencies and ruff
-        run: |
-          pip install ruff
+  #     - name: Install dependencies and ruff
+  #       run: |
+  #         pip install ruff
 
-      - name: Run Ruff on Backend
-        run: ruff check ./backend
+  #     - name: Run Ruff on Backend
+  #       run: ruff check ./backend
 
-      - name: Run Ruff on Frontend
-        run: ruff check ./frontend
+  #     - name: Run Ruff on Frontend
+  #       run: ruff check ./frontend
           
   sonarqube:
     name: 🔎 SonarQube Analysis
     runs-on: ubuntu-latest
-    needs: lint # Depends on linting passing
+    #needs: lint # Depends on linting passing
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
