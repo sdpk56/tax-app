@@ -3,7 +3,7 @@ from datetime import timedelta # Import timedelta
 
 class Config:
     # Database Configuration
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "postgresql://postgres:yourpassword@postgres-service:5432/taxdb")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "postgresql://postgres:yourpassword@taxdb/taxdb")
     SQLALCHEMY_TRACK_MODIFICATIONS = False # Recommended to set to False to save resources
 
     # JWT Configuration
