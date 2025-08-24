@@ -41,7 +41,7 @@ jobs:
           
   sonarqube:
     name: 🔎 SonarQube Analysis
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     #needs: lint # Depends on linting passing
     steps:
       - name: Checkout repository
@@ -69,7 +69,7 @@ jobs:
       
   build-and-scan:
     name: 📦 Build & Scan Docker Images
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: sonarqube # Depends on SonarQube analysis passing
     outputs:
       backend_full_image_name: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}
@@ -120,7 +120,7 @@ jobs:
 
   package-helm:
     name: 📦 Package Helm Chart
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-and-scan
     steps:
     - name: Checkout repository
@@ -142,7 +142,7 @@ jobs:
 
   notify-on-failure:
     name: 🔔 Notify on Failure
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [build-and-scan, package-helm]
     if: failure()
     steps:
@@ -164,4 +164,3 @@ jobs:
           from: GitHub Actions
 
 
-          
