@@ -60,7 +60,7 @@ jobs:
 
       - name: Run SonarScanner CLI
         # Use -D to set the projectBaseDir property on the command line
-        run: sonar-scanner.bat -D sonar.projectBaseDir=backend/ -D sonar.projectKey=my-project-key
+        run: sonar-scanner.bat -D sonar.projectBaseDir=backend/ -D sonar.projectKey=demo_project
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
