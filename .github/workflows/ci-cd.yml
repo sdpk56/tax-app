@@ -96,7 +96,7 @@ jobs:
   notify-on-failure:
     name: 🔔 Notify on Failure
     runs-on: self-hosted
-    needs: [build-and-scan, package-helm]
+    needs: build-and-scan
     if: failure()
     steps:
       - name: Send mail
