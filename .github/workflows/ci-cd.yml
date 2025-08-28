@@ -44,7 +44,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       
   build-and-scan:
-    name: 📦 Build & Scan Docker Images
+    name: 📦 Build & Push Docker Images
     runs-on: self-hosted
     needs: sonarqube
     outputs:
