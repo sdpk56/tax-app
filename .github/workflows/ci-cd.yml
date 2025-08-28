@@ -58,24 +58,16 @@ jobs:
           Expand-Archive sonar-scanner.zip -DestinationPath .
           echo "sonar-scanner-4.8.0.2856/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Run SonarScanner CLI
+      - name: Run SonarScanner CLI - Backend
         # Use -D to set the projectBaseDir property on the command line
         run: sonar-scanner.bat -D sonar.projectBaseDir=backend/ -D sonar.projectKey=demo_project
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - uses: actions/checkout@v4
-      - name: SonarScan - Frontend
-        # Download and extract the SonarScanner CLI
-        run: |
-          Invoke-WebRequest -Uri "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856.zip" -OutFile "sonar-scanner.zip"
-          Expand-Archive sonar-scanner.zip -DestinationPath .
-          echo "sonar-scanner-4.8.0.2856/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Run SonarScanner CLI
-        run: |
-          # Use -D to set the projectBaseDir property on the command line
-          sonar-scanner.bat -Dsonar.projectBaseDir=frontend/
+      - name: Run SonarScanner CLI - Frontend
+        # Use -D to set the projectBaseDir property on the command line
+        run: sonar-scanner.bat -D sonar.projectBaseDir=frontend/ -D sonar.projectKey=demo_project
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
