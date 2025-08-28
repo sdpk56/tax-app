@@ -7,114 +7,98 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   DOCKER_REGISTRY: docker.io
   IMAGE_TAG: ${{ github.run_id }}
   
-jobs:
+jobs:     
   sonarqube:
-    name: 🔎 SonarQube Analysis
+    name: 🔎 Code Checkout & SonarQube Code Analysis
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
-      
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar-${{ hashFiles('**/pom.xml', '**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-sonar-
-      
-      - name: Set up SonarScanner CLI
-        run: |
-          SONAR_SCANNER_URL="https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856.zip"
-          curl -sS -o sonar-scanner.zip $SONAR_SCANNER_URL
-          unzip -o sonar-scanner.zip
-          echo "$PWD/sonar-scanner-4.8.0.2856/bin" >> $GITHUB_PATH
 
-      - name: Run SonarScanner CLI
+      - name: Setup SonarScanner
         run: |
-          sonar-scanner.bat \
-            -D sonar.projectKey=demo_project \
-            -D sonar.sources=./backend,./frontend
+          Invoke-WebRequest -Uri "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856.zip" -OutFile "sonar-scanner.zip"
+          Expand-Archive sonar-scanner.zip -DestinationPath .
+          echo "sonar-scanner-4.8.0.2856/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Run SonarScanner CLI - Backend
+        run: sonar-scanner.bat -D sonar.projectBaseDir=backend/ -D sonar.projectKey=demo_project
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-    
-  build-and-push:
-    name: 📦 Build and Push Docker Images
+
+      - name: Run SonarScanner CLI - Frontend
+        run: sonar-scanner.bat -D sonar.projectBaseDir=frontend/ -D sonar.projectKey=demo_project
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      
+  build-and-scan:
+    name: 📦 Build & Scan Docker Images
     runs-on: self-hosted
     needs: sonarqube
-    strategy:
-      matrix:
-        include:
-          - project: backend
-            dockerfile: ./backend/Dockerfile
-            context: ./backend
-            image_name: tax-backend
-          - project: frontend
-            dockerfile: ./frontend/Dockerfile
-            context: ./frontend
-            image_name: tax-frontend
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    outputs:
+      backend_full_image_name: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}
+      frontend_full_image_name: ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}
 
-      - name: Set up Docker BuildX
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Login to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and push ${{ matrix.project }} Docker image
-        uses: docker/build-and-push-action@v5
-        with:
-          context: ${{ matrix.context }}
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image_name }}:latest
-          
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker BuildX
+      uses: docker/setup-buildx-action@v3
+
+    # Build Backend Image
+    - name: Build Backend Docker Image
+      id: build_backend
+      run: |
+        echo "Building backend Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}"
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }} ./backend
+        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:latest
+
+    # Build Frontend Image
+    - name: Build Frontend Docker Image
+      id: build_frontend
+      run: |
+        echo "Building frontend Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}"
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }} ./frontend
+        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }} ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:latest
+
+    - name: Login to Docker Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Push Backend Docker Image
+      run: |
+        echo "Pushing backend Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}"
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:${{ env.IMAGE_TAG }}
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/tax-backend:latest
+
+    - name: Push Frontend Docker Image
+      run: |
+        echo "Pushing frontend Docker image: ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}"
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:${{ env.IMAGE_TAG }}
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/tax-frontend:latest
+
   notify-on-failure:
     name: 🔔 Notify on Failure
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    needs: [build-and-scan, package-helm]
     if: failure()
-    needs: [sonarqube, build-and-push]
     steps:
-      - name: Get job status from all dependencies
-        id: get_status
-        run: |
-          echo "sonarqube_status=${{ needs.sonarqube.result }}" >> $GITHUB_OUTPUT
-          echo "build_and_push_status=${{ needs.build-and-push.result }}" >> $GITHUB_OUTPUT
-      
-      - name: Get workflow summary
-        id: get_summary
-        run: |
-          summary="Workflow for run ${{ github.run_id }} failed with the following status:\n"
-          if [[ "${{ steps.get_status.outputs.sonarqube_status }}" == "failure" ]]; then
-            summary+="* 🔎 SonarQube Analysis: Failed\n"
-          fi
-          if [[ "${{ steps.get_status.outputs.build_and_push_status }}" == "failure" ]]; then
-            summary+="* 📦 Build and Push Docker Images: Failed\n"
-          fi
-          summary+="For details, visit: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$summary" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
       - name: Send mail
         uses: dawidd6/action-send-mail@v3
         with:
@@ -124,6 +108,10 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: 'Workflow Failed: ${{ github.workflow }}'
-          body: ${{ steps.get_summary.outputs.summary }}
+          body: |
+            Workflow "${{ github.workflow }}" failed on the main branch.
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: sdpk.ks3@gmail.com
           from: GitHub Actions
