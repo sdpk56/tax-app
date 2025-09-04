@@ -1,12 +1,12 @@
 backend:
   image: mydockd/tax-backend:latest
   containerPort: 5000
-  replicas: 2
+  replicas: 3
 
 frontend:
   image: mydockd/tax-frontend:latest
   containerPort: 8000
-  replicas: 2
+  replicas: 3
 
 postgres:
   image: postgres:17
