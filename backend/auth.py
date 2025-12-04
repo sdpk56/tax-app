@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 auth = Blueprint("auth", __name__)
 
 @auth.route("/signup", methods=["POST"])
-def signup():
+def signup() -> tuple:
     data = request.get_json() # Use get_json() for robustness
     if not data:
         logger.warning("Signup attempt with no JSON data.")
@@ -22,13 +22,13 @@ def signup():
         logger.warning("Signup attempt with missing username or password.")
         return jsonify({"message": "Username and password are required"}), 400
 
-    # Check if username already exists
-    existing_user = User.query.filter_by(username=username).first()
-    if existing_user:
-        logger.info(f"Signup attempt for existing username: {username}")
-        return jsonify({"message": "Username already exists. Please choose a different one."}), 409 # Conflict
-
     try:
+        # Check if username already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            logger.info(f"Signup attempt for existing username: {username}")
+            return jsonify({"message": "Username already exists. Please choose a different one."}), 409 # Conflict
+
         # Hash the password before storing it
         # Use a stronger method if available, e.g., 'pbkdf2:sha256:260000' for more iterations
         hashed_password = generate_password_hash(password, method="pbkdf2:sha256")
@@ -39,11 +39,11 @@ def signup():
         return jsonify({"message": "User registered successfully!"}), 201 # Created
     except Exception as e:
         db.session.rollback() # Rollback in case of error
-        logger.error(f"Error during user registration for '{username}': {e}")
+        logger.error(f"Error during user registration for '{username}': {e}", exc_info=True)
         return jsonify({"message": "An error occurred during registration."}), 500
 
 @auth.route("/login", methods=["POST"])
-def login():
+def login() -> tuple:
     data = request.get_json()
     if not data:
         logger.warning("Login attempt with no JSON data.")
@@ -56,15 +56,19 @@ def login():
         logger.warning("Login attempt with missing username or password.")
         return jsonify({"message": "Username and password are required"}), 400
 
-    user = User.query.filter_by(username=username).first()
+    try:
+        user = User.query.filter_by(username=username).first()
 
-    if user and check_password_hash(user.password, password):
-        # Set expires_delta to a specific time, e.g., 30 minutes
-        # from datetime import timedelta
-        # access_token = create_access_token(identity=user.username, expires_delta=timedelta(minutes=30))
-        access_token = create_access_token(identity=user.username) # Using default expiration from config
-        logger.info(f"User '{username}' logged in successfully.")
-        return jsonify({"access_token": access_token}), 200
-    else:
-        logger.info(f"Failed login attempt for username: {username}")
-        return jsonify({"message": "Invalid username or password"}), 401 # More specific error message
+        if user and check_password_hash(user.password, password):
+            # Set expires_delta to a specific time, e.g., 30 minutes
+            # from datetime import timedelta
+            # access_token = create_access_token(identity=user.username, expires_delta=timedelta(minutes=30))
+            access_token = create_access_token(identity=user.username) # Using default expiration from config
+            logger.info(f"User '{username}' logged in successfully.")
+            return jsonify({"access_token": access_token}), 200
+        else:
+            logger.info(f"Failed login attempt for username: {username}")
+            return jsonify({"message": "Invalid username or password"}), 401 # More specific error message
+    except Exception as e:
+        logger.error(f"Error during login for '{username}': {e}", exc_info=True)
+        return jsonify({"message": "An error occurred during login."}), 500

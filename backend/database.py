@@ -5,6 +5,7 @@ logger = logging.getLogger(__name__)
 db = SQLAlchemy()
 
 def init_db(app):
+    """Initialize database and create tables."""
     db.init_app(app)
     with app.app_context():
         try:
@@ -12,5 +13,4 @@ def init_db(app):
             logger.info("Database tables checked/created successfully.")
         except Exception as e:
             logger.error(f"Error creating database tables: {e}")
-            # Depending on your deployment strategy, you might want to exit here
-            # sys.exit(1) # Requires 'import sys'
+            logger.warning("Continuing with application startup despite database error.")

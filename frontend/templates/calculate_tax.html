@@ -1,40 +1,337 @@
 {% extends "base.html" %}
 
-{% block title %}Calculate Tax{% endblock %}
+{% block title %}Advanced Tax Calculator{% endblock %}
 
 {% block content %}
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h2 class="mt-5 mb-3 text-center">Calculate Your Tax</h2>
+<style>
+    .tax-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        border: none;
+    }
+    .tax-card .card-header {
+        border-radius: 12px 12px 0 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .input-section {
+        background: #f8f9fa;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 12px;
+    }
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .btn-calculate {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 30px;
+        font-weight: 600;
+        width: 100%;
+        margin-top: 20px;
+    }
+    .btn-calculate:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+    .stat-label {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-top: 5px;
+    }
+    .comparison-box {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #667eea;
+        margin: 10px 0;
+    }
+    .comparison-label {
+        font-weight: 600;
+        color: #333;
+    }
+    .comparison-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #667eea;
+    }
+    .savings-box {
+        background: #d4edda;
+        border-left: 5px solid #28a745;
+        color: #155724;
+    }
+    .alert-info-custom {
+        background: #e7f3ff;
+        border-left: 5px solid #2196F3;
+        color: #0c5aa0;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 20px 0;
+    }
+</style>
 
-            <form method="POST">
-                <div class="form-group">
-                    <label for="income">Income:</label>
-                    <input type="number" class="form-control" id="income" name="income" placeholder="Enter your annual income" required min="0">
-                </div>
-                <div class="form-group">
-                    <label for="regime">Tax Regime:</label>
-                    <select class="form-control" id="regime" name="regime" required>
-                        <option value="">Select a regime</option>
-                        <option value="old">Old Regime</option>
-                        <option value="new">New Regime</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Calculate Tax</button>
-            </form>
+<div class="container mt-5">
+    <h1 class="text-center mb-5">Advanced Tax Calculator</h1>
+    
+    <!-- Input Section -->
+    <div class="input-section">
+        <div class="row">
+            <div class="col-md-6 offset-md-3">
+                <form id="taxForm">
+                    <div class="form-group">
+                        <label for="income"><strong>Annual Income (₹)</strong></label>
+                        <input type="number" class="form-control" id="income" placeholder="Enter your annual income" required min="0" step="100">
+                        <small class="form-text text-muted">Your total annual salary/income</small>
+                    </div>
 
-            {% if tax_result %}
-                <div class="card mt-4">
-                    <div class="card-header bg-info text-white">
-                        <h3>Tax Calculation Result</h3>
+                    <div class="form-group">
+                        <label for="regime"><strong>Tax Regime</strong></label>
+                        <select class="form-control" id="regime" required>
+                            <option value="">Select a regime</option>
+                            <option value="old">Old Regime</option>
+                            <option value="new">New Regime</option>
+                        </select>
+                        <small class="form-text text-muted">Choose the tax regime applicable to you</small>
                     </div>
-                    <div class="card-body">
-                        <p><strong>Income:</strong> ₹{{ "{:,.2f}".format(tax_result.income) }}</p>
-                        <p><strong>Regime:</strong> {{ tax_result.regime|capitalize }}</p>
-                        <p><strong>Calculated Tax:</strong> <span class="font-weight-bold text-danger">₹{{ "{:,.2f}".format(tax_result.tax) }}</span></p>
+
+                    <div class="form-group">
+                        <label for="deductions"><strong>Deductions (₹) - Optional</strong></label>
+                        <input type="number" class="form-control" id="deductions" placeholder="Enter 80C, 80D, etc. deductions" min="0" step="100" value="0">
+                        <small class="form-text text-muted">Section 80C (₹1.5L), 80D (medical insurance), etc.</small>
                     </div>
-                </div>
-            {% endif %}
+
+                    <button type="submit" class="btn btn-calculate">Calculate Tax</button>
+                    <button type="button" class="btn btn-outline-secondary" id="compareBtn" style="width: 100%; margin-top: 10px;">Compare Regimes</button>
+                </form>
+            </div>
         </div>
     </div>
+
+    <!-- Results Section -->
+    <div id="resultsContainer" style="display:none;">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <!-- Tax Summary -->
+                <div class="card tax-card">
+                    <div class="card-header">
+                        <h4 class="mb-0">Tax Calculation Summary</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="stat-box">
+                                    <div class="stat-value" id="totalTaxDisplay">₹0</div>
+                                    <div class="stat-label">Total Tax Liability</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="stat-box">
+                                    <div class="stat-value" id="effectiveRateDisplay">0%</div>
+                                    <div class="stat-label">Effective Tax Rate</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert-info-custom mt-3">
+                            <strong>Quick Overview:</strong>
+                            <ul style="margin: 10px 0 0 20px;">
+                                <li>Gross Income: <strong id="grossIncomeDisplay">₹0</strong></li>
+                                <li>Taxable Income: <strong id="taxableIncomeDisplay">₹0</strong></li>
+                                <li>Base Tax: <strong id="baseTaxDisplay">₹0</strong></li>
+                                <li>Surcharge: <strong id="surchargeDisplay">₹0</strong></li>
+                                <li>Health & Education Cess: <strong id="cessDisplay">₹0</strong></li>
+                            </ul>
+                        </div>
+
+                        <hr>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <p><strong>Monthly Take-Home:</strong><br><span style="font-size: 20px; color: #28a745;" id="monthlyTakeHomeDisplay">₹0</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Annual Take-Home:</strong><br><span style="font-size: 20px; color: #28a745;" id="annualTakeHomeDisplay">₹0</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regime Comparison -->
+                <div id="comparisonContainer" class="card tax-card" style="display:none;">
+                    <div class="card-header">
+                        <h4 class="mb-0">Tax Regime Comparison</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="comparison-box">
+                                    <div class="comparison-label">Old Regime Tax</div>
+                                    <div class="comparison-value" id="oldRegimeTax">₹0</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="comparison-box">
+                                    <div class="comparison-label">New Regime Tax</div>
+                                    <div class="comparison-value" id="newRegimeTax">₹0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comparison-box savings-box mt-3">
+                            <div class="comparison-label">Potential Savings</div>
+                            <div class="comparison-value" id="savingsAmount">₹0</div>
+                            <p style="margin-top: 10px; margin-bottom: 0;"><strong>Recommended Regime:</strong> <span id="recommendedRegime">-</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tax Slabs Breakdown -->
+                <div class="card tax-card">
+                    <div class="card-header">
+                        <h4 class="mb-0">Tax Slab Breakdown</h4>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped" id="slabsTable">
+                            <thead style="background: #f8f9fa;">
+                                <tr>
+                                    <th>Income Range</th>
+                                    <th>Amount in Slab</th>
+                                    <th>Tax Rate</th>
+                                    <th>Tax Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="slabsTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+const BACKEND_URL = "{{ url_for('calculate_tax_form') }}" || 'http://tax-backend:5000';
+
+// Format currency
+function formatCurrency(value) {
+    return '₹' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+// Calculate tax
+document.getElementById('taxForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const income = parseFloat(document.getElementById('income').value);
+    const regime = document.getElementById('regime').value;
+    const deductions = parseFloat(document.getElementById('deductions').value) || 0;
+
+    try {
+        const response = await axios.post('/api/calculate-tax', {
+            income: income,
+            regime: regime,
+            deductions: deductions
+        });
+
+        const result = response.data;
+        displayResults(result);
+        
+        // Fetch and display slabs breakdown
+        fetchSlabsBreakdown(income, regime);
+    } catch (error) {
+        alert('Error calculating tax: ' + (error.response?.data?.message || error.message));
+    }
+});
+
+// Compare regimes
+document.getElementById('compareBtn').addEventListener('click', async () => {
+    const income = parseFloat(document.getElementById('income').value);
+    const deductions = parseFloat(document.getElementById('deductions').value) || 0;
+
+    if (!income) {
+        alert('Please enter income first');
+        return;
+    }
+
+    try {
+        const response = await axios.post('/api/compare-regimes', {
+            income: income,
+            deductions: deductions
+        });
+
+        displayComparison(response.data);
+    } catch (error) {
+        alert('Error comparing regimes: ' + (error.response?.data?.message || error.message));
+    }
+});
+
+function displayResults(result) {
+    document.getElementById('resultsContainer').style.display = 'block';
+    
+    document.getElementById('totalTaxDisplay').textContent = formatCurrency(result.total_tax);
+    document.getElementById('effectiveRateDisplay').textContent = result.effective_tax_rate + '%';
+    document.getElementById('grossIncomeDisplay').textContent = formatCurrency(result.gross_income);
+    document.getElementById('taxableIncomeDisplay').textContent = formatCurrency(result.taxable_income);
+    document.getElementById('baseTaxDisplay').textContent = formatCurrency(result.base_tax);
+    document.getElementById('surchargeDisplay').textContent = formatCurrency(result.surcharge);
+    document.getElementById('cessDisplay').textContent = formatCurrency(result.health_education_cess);
+    document.getElementById('monthlyTakeHomeDisplay').textContent = formatCurrency(result.take_home_monthly);
+    document.getElementById('annualTakeHomeDisplay').textContent = formatCurrency(result.take_home_annual);
+}
+
+function displayComparison(comparison) {
+    document.getElementById('comparisonContainer').style.display = 'block';
+    document.getElementById('oldRegimeTax').textContent = formatCurrency(comparison.old_regime.total_tax);
+    document.getElementById('newRegimeTax').textContent = formatCurrency(comparison.new_regime.total_tax);
+    document.getElementById('savingsAmount').textContent = formatCurrency(Math.abs(comparison.savings));
+    document.getElementById('recommendedRegime').textContent = comparison.recommended_regime === 'old' ? 'Old Regime' : 'New Regime';
+}
+
+function fetchSlabsBreakdown(income, regime) {
+    const params = new URLSearchParams({ income: income });
+    fetch(`/api/tax-slabs/${regime}?${params}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('slabsTableBody');
+            tbody.innerHTML = '';
+            
+            data.slabs.forEach(slab => {
+                const row = `<tr>
+                    <td>${slab.range}</td>
+                    <td>${formatCurrency(slab.income_in_slab)}</td>
+                    <td>${slab.rate}</td>
+                    <td>${formatCurrency(slab.tax)}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        })
+        .catch(e => console.error('Error fetching slabs:', e));
+}
+</script>
 {% endblock %}

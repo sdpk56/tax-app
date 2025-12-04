@@ -38,7 +38,29 @@ CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 app.register_blueprint(auth)
 app.register_blueprint(routes)
 
+# Health check endpoint
+@app.route("/health", methods=["GET"])
+def health():
+    """Health check endpoint."""
+    return jsonify({"status": "healthy"}), 200
+
 # JWT Error Handlers
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle unexpected errors."""
+    logger.error(f"Unhandled exception: {e}", exc_info=True)
+    
+    # In development, provide detailed error information
+    if app.config.get('DEBUG'):
+        import traceback
+        return jsonify({
+            "message": "Internal server error",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+    else:
+        return jsonify({"message": "Internal server error"}), 500
+
 @jwt.unauthorized_loader
 def unauthorized_response(callback):
     logger.warning("Unauthorized access attempt.")
