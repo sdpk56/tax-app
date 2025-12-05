@@ -1,0 +1,97 @@
+name: Python AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+jobs:
+  review-python-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Fetch full history
+        run: |
+          git fetch --unshallow || true
+          git fetch origin main
+
+      - name: Get changed files and unified diff (selected globs)
+        id: get_diff
+        run: |
+          # only consider these globs
+          GLOBS='*.py Dockerfile *.md *.yaml *.yml *.html'
+
+          # list changed files matching the globs between the PR branch and origin/main
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD -- $GLOBS)
+          echo "$CHANGED_FILES"
+          echo "$CHANGED_FILES" > files.txt
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # capture a bounded-size unified diff only for the matching files
+          DIFF=$(git diff origin/main...HEAD -- $GLOBS | head -c 16000)
+          echo "$DIFF" > diff.txt
+
+          if [ -z "$DIFF" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Review diff with GitHub AI
+        if: steps.get_diff.outputs.skip != 'true'
+        id: ai_review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FILE_LIST=$(cat files.txt)
+
+          # derive a compact comma-separated list of file types/extensions
+          FILE_TYPES=$(awk -F'.' '{if (NF>1) print $NF; else print "noext"}' files.txt | sort -u | tr '\n' ',' | sed 's/,$//')
+
+          DIFF_CONTENT=$(cat diff.txt)
+
+          PROMPT="You are a senior software developer. The following files changed in this pull request:\n\n$FILE_LIST\n\nFile types: $FILE_TYPES\n\nPlease review the unified diff below and provide:\n- a concise summary of what changed\n- any potential bugs, security issues, or risky behavior introduced\n- suggestions for improvements or tests to add\n\n$DIFF_CONTENT"
+
+          PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{
+            "model": "openai/gpt-4o",
+            "messages": [
+              { "role": "user", "content": $prompt }
+            ]
+          }')
+
+          echo "Calling GitHub AI model..."
+          RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" > raw.json
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+          if [ -z "$SUMMARY" ]; then
+            echo "❌ GitHub AI model did not return a summary."
+            echo "⚠️ GitHub AI model did not return a summary." > summary.txt
+          else
+            echo "$SUMMARY" > summary.txt
+          fi
+
+      - name: Comment on PR
+        if: steps.get_diff.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          COMMENT=$(cat summary.txt)
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
