@@ -1,0 +1,76 @@
+name: Java AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  models: read
+
+jobs:
+  review-java-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Fetch full history
+        run: |
+          git fetch --unshallow || true
+          git fetch origin master
+
+      - name: Get diff for Java files
+        id: get_diff
+        run: |
+          DIFF=$(git diff origin/master...HEAD -- '*.java' | head -c 7000)
+          echo "$DIFF"
+          echo "$DIFF" > diff.txt
+          if [ -z "$DIFF" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Review diff with GitHub AI
+        if: steps.get_diff.outputs.skip != 'true'
+        id: ai_review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PROMPT="You are a senior Java developer. Review the following Java code diff and summarize what changed:\n\n$(cat diff.txt)"
+
+          PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{
+            "model": "openai/gpt-4o",
+            "messages": [
+              { "role": "user", "content": $prompt }
+            ]
+          }')
+
+          echo "Calling GitHub AI model..."
+          RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "$RESPONSE" > raw.json
+
+          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+
+          if [ -z "$SUMMARY" ]; then
+            echo "❌ GitHub AI model did not return a summary."
+            echo "⚠️ GitHub AI model did not return a summary." > summary.txt
+          else
+            echo "$SUMMARY" > summary.txt
+          fi
+
+      - name: Comment on PR
+        if: steps.get_diff.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          COMMENT=$(cat summary.txt)
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
