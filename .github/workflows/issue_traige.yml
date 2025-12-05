@@ -1,76 +1,89 @@
-name: Java AI PR Review
+name: AI Issue Triage
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-
-permissions:
-  contents: read
-  pull-requests: write
-  models: read
+  issues:
+    types: [opened, edited]
 
 jobs:
-  review-java-changes:
+  triage:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Fetch full history
+      - name: Extract Issue Details Safely
+        id: extract
         run: |
-          git fetch --unshallow || true
-          git fetch origin master
+          echo "ISSUE_TITLE<<EOF" >> $GITHUB_ENV
+          jq -r .issue.title "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-      - name: Get diff for Java files
-        id: get_diff
-        run: |
-          DIFF=$(git diff origin/master...HEAD -- '*.java' | head -c 7000)
-          echo "$DIFF"
-          echo "$DIFF" > diff.txt
-          if [ -z "$DIFF" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
+          echo "ISSUE_BODY<<EOF" >> $GITHUB_ENV
+          jq -r .issue.body "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-      - name: Review diff with GitHub AI
-        if: steps.get_diff.outputs.skip != 'true'
-        id: ai_review
+          echo "ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")" >> $GITHUB_ENV
+
+      - name: Call OpenAI for Triage Suggestions
+        id: ai
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ env.ISSUE_TITLE }}
+          ISSUE_BODY: ${{ env.ISSUE_BODY }}
         run: |
-          PROMPT="You are a senior Java developer. Review the following Java code diff and summarize what changed:\n\n$(cat diff.txt)"
+          PROMPT="Analyze the following GitHub issue and suggest:
+          - a label (bug, feature, question)
+          - priority (high, medium, low)
+          - the most appropriate team to assign (e.g., frontend, backend, devops)
+          - a short summary or first response
 
-          PAYLOAD=$(jq -n --arg prompt "$PROMPT" '{
+          Title: $ISSUE_TITLE
+
+          Body:
+          $ISSUE_BODY"
+
+          REQUEST=$(jq -n --arg prompt "$PROMPT" '{
             "model": "openai/gpt-4o",
-            "messages": [
-              { "role": "user", "content": $prompt }
-            ]
+            "messages": [{"role": "user", "content": $prompt}]
           }')
 
-          echo "Calling GitHub AI model..."
           RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD")
+            -d "$REQUEST")
 
-          echo "$RESPONSE" > raw.json
+          AI_RESPONSE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
 
-          SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+          echo "AI_RESPONSE<<EOF" >> $GITHUB_ENV
+          echo "$AI_RESPONSE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-          if [ -z "$SUMMARY" ]; then
-            echo "❌ GitHub AI model did not return a summary."
-            echo "⚠️ GitHub AI model did not return a summary." > summary.txt
+          ASSIGNED_TEAM=$(echo "$AI_RESPONSE" | grep -i "team to assign" | awk -F ':' '{print $2}' | xargs || true)
+
+          if [[ "$ASSIGNED_TEAM" == "frontend" ]]; then
+            echo 'ASSIGNEE=org/frontend-team' >> $GITHUB_ENV
+          elif [[ "$ASSIGNED_TEAM" == "backend" ]]; then
+            echo 'ASSIGNEE=org/backend-team' >> $GITHUB_ENV
+          elif [[ "$ASSIGNED_TEAM" == "devops" ]]; then
+            echo 'ASSIGNEE=org/devops-team' >> $GITHUB_ENV
           else
-            echo "$SUMMARY" > summary.txt
+            echo 'ASSIGNEE=' >> $GITHUB_ENV
           fi
 
-      - name: Comment on PR
-        if: steps.get_diff.outputs.skip != 'true'
+      - name: Assign Issue to Team
+        if: env.ASSIGNEE != ''
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
+          ASSIGNEE: ${{ env.ASSIGNEE }}
         run: |
-          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          COMMENT=$(cat summary.txt)
-          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+          gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
+
+      - name: Comment AI Suggestion on Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_RESPONSE: ${{ env.AI_RESPONSE }}
+          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
+        run: |
+          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body-file -
