@@ -72,7 +72,7 @@ jobs:
           fi
 
       - name: Assign Issue to Team
-        if: env.ASSIGNEE != ''
+        #if: env.ASSIGNEE != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
