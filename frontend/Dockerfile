@@ -18,3 +18,4 @@ EXPOSE 8000
 # Run the Flask application
 # Use 0.0.0.0 to make the server accessible from outside the container
 CMD ["python", "app.py"]
+
