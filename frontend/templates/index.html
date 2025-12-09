@@ -3,9 +3,9 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-    <div class="starter-template">
+    <div class="starter-template hero">
         <h1>Welcome to the Tax Calculator App!</h1>
-        <p class="lead">Use this application to register, log in, and calculate your income tax.</p>
+        <p class="lead">Use this application to register, log in, and calculate your income tax with clarity.</p>
         {% if 'username' in session %}
             <p>You are logged in as <strong>{{ session['username'] }}</strong>. Go to <a href="{{ url_for('calculate_tax_form') }}">Calculate Tax</a>.</p>
         {% else %}
