@@ -4,6 +4,10 @@ on:
   issues:
     types: [opened, edited]
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   triage:
     runs-on: ubuntu-latest
@@ -15,13 +19,15 @@ jobs:
       - name: Extract Issue Details Safely
         id: extract
         run: |
-          echo "ISSUE_TITLE<<EOF" >> $GITHUB_ENV
-          jq -r .issue.title "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "ISSUE_BODY<<EOF" >> $GITHUB_ENV
-          jq -r .issue.body "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-          echo "ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")" >> $GITHUB_ENV
+          TITLE=$(jq -r '.issue.title // "No title"' "$GITHUB_EVENT_PATH")
+          BODY=$(jq -r '.issue.body // "No description"' "$GITHUB_EVENT_PATH")
+          NUMBER=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
+          
+          echo "ISSUE_TITLE=$TITLE" >> $GITHUB_ENV
+          echo "ISSUE_BODY=$BODY" >> $GITHUB_ENV
+          echo "ISSUE_NUMBER=$NUMBER" >> $GITHUB_ENV
+          
+          echo "DEBUG: Extracted Issue #$NUMBER - Title: $TITLE"
       - name: Call OpenAI for Triage Suggestions
         id: ai
         env:
@@ -89,9 +95,12 @@ jobs:
         run: |
           gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
       - name: Comment AI Suggestion on Issue
+        if: env.AI_RESPONSE != 'Error: No response from AI'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_RESPONSE: ${{ env.AI_RESPONSE }}
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
         run: |
-          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body-file -
+          gh issue comment "$ISSUE_NUMBER" --body "**AI Triage Suggestion:**
+          
+          $AI_RESPONSE"
