@@ -4,10 +4,6 @@ on:
   issues:
     types: [opened, edited]
 
-permissions:
-  issues: write
-  contents: read
-
 jobs:
   triage:
     runs-on: ubuntu-latest
@@ -19,15 +15,13 @@ jobs:
       - name: Extract Issue Details Safely
         id: extract
         run: |
-          TITLE=$(jq -r '.issue.title // "No title"' "$GITHUB_EVENT_PATH")
-          BODY=$(jq -r '.issue.body // "No description"' "$GITHUB_EVENT_PATH")
-          NUMBER=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
-          
-          echo "ISSUE_TITLE=$TITLE" >> $GITHUB_ENV
-          echo "ISSUE_BODY=$BODY" >> $GITHUB_ENV
-          echo "ISSUE_NUMBER=$NUMBER" >> $GITHUB_ENV
-          
-          echo "DEBUG: Extracted Issue #$NUMBER - Title: $TITLE"
+          echo "ISSUE_TITLE<<EOF" >> $GITHUB_ENV
+          jq -r .issue.title "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "ISSUE_BODY<<EOF" >> $GITHUB_ENV
+          jq -r .issue.body "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")" >> $GITHUB_ENV
       - name: Call OpenAI for Triage Suggestions
         id: ai
         env:
@@ -43,39 +37,18 @@ jobs:
           Title: $ISSUE_TITLE
           Body:
           $ISSUE_BODY"
-          
           REQUEST=$(jq -n --arg prompt "$PROMPT" '{
             "model": "openai/gpt-4o",
             "messages": [{"role": "user", "content": $prompt}]
           }')
-          
-          echo "DEBUG: Sending request to GitHub AI API..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" https://models.github.ai/inference/chat/completions \
+          RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$REQUEST")
-          
-          # Extract HTTP status code (last line)
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          # Extract response body (everything except last line)
-          RESPONSE_BODY=$(echo "$RESPONSE" | head -n-1)
-          
-          echo "DEBUG: HTTP Status Code: $HTTP_CODE"
-          echo "DEBUG: Full Response:"
-          echo "$RESPONSE_BODY" | jq . 2>/dev/null || echo "$RESPONSE_BODY"
-          
-          # Try to extract AI response; handle errors gracefully
-          AI_RESPONSE=$(echo "$RESPONSE_BODY" | jq -r '.choices[0].message.content // "Error: No response from AI"' 2>/dev/null)
-          
-          if [[ "$AI_RESPONSE" == "null" ]] || [[ -z "$AI_RESPONSE" ]]; then
-            AI_RESPONSE="Error: AI returned null or empty response. Check API status."
-          fi
-          
-          echo "DEBUG: AI Response extracted: $AI_RESPONSE"
+          AI_RESPONSE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
           echo "AI_RESPONSE<<EOF" >> $GITHUB_ENV
           echo "$AI_RESPONSE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-          
           ASSIGNED_TEAM=$(echo "$AI_RESPONSE" | grep -i "team to assign" | awk -F ':' '{print $2}' | xargs || true)
           if [[ "$ASSIGNED_TEAM" == "frontend" ]]; then
             echo 'ASSIGNEE=org/frontend-team' >> $GITHUB_ENV
@@ -95,12 +68,9 @@ jobs:
         run: |
           gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
       - name: Comment AI Suggestion on Issue
-        if: env.AI_RESPONSE != 'Error: No response from AI'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_RESPONSE: ${{ env.AI_RESPONSE }}
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "**AI Triage Suggestion:**
-          
-          $AI_RESPONSE"
+          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body-file -
