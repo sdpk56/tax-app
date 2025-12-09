@@ -1,8 +1,12 @@
+
 name: AI Issue Triage
 
 on:
   issues:
     types: [opened, edited]
+
+permissions:
+  issues: write
 
 jobs:
   triage:
@@ -59,31 +63,10 @@ jobs:
           echo "$AI_RESPONSE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-          ASSIGNED_TEAM=$(echo "$AI_RESPONSE" | grep -i "team to assign" | awk -F ':' '{print $2}' | xargs || true)
-
-          if [[ "$ASSIGNED_TEAM" == "frontend" ]]; then
-            echo 'ASSIGNEE=org/frontend-team' >> $GITHUB_ENV
-          elif [[ "$ASSIGNED_TEAM" == "backend" ]]; then
-            echo 'ASSIGNEE=org/backend-team' >> $GITHUB_ENV
-          elif [[ "$ASSIGNED_TEAM" == "devops" ]]; then
-            echo 'ASSIGNEE=org/devops-team' >> $GITHUB_ENV
-          else
-            echo 'ASSIGNEE=' >> $GITHUB_ENV
-          fi
-
-      - name: Assign Issue to Team
-        #if: env.ASSIGNEE != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
-          ASSIGNEE: ${{ env.ASSIGNEE }}
-        run: |
-          gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
-
       - name: Comment AI Suggestion on Issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_RESPONSE: ${{ env.AI_RESPONSE }}
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
         run: |
-          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body-file -
+          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body -
