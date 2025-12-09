@@ -41,7 +41,7 @@ jobs:
           Body:
           $ISSUE_BODY"
           REQUEST=$(jq -n --arg prompt "$PROMPT" '{
-            "model": "openai/gpt-4o",
+            "model": "openai/gpt-4-turbo",
             "messages": [{"role": "user", "content": $prompt}]
           }')
           RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
