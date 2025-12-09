@@ -1,12 +1,8 @@
-
 name: AI Issue Triage
 
 on:
   issues:
     types: [opened, edited]
-
-permissions:
-  issues: write
 
 jobs:
   triage:
@@ -22,17 +18,14 @@ jobs:
           echo "ISSUE_TITLE<<EOF" >> $GITHUB_ENV
           jq -r .issue.title "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
           echo "ISSUE_BODY<<EOF" >> $GITHUB_ENV
           jq -r .issue.body "$GITHUB_EVENT_PATH" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
           echo "ISSUE_NUMBER=$(jq -r .issue.number "$GITHUB_EVENT_PATH")" >> $GITHUB_ENV
-
       - name: Call OpenAI for Triage Suggestions
         id: ai
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Your OpenAI key from GitHub Secrets
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_TITLE: ${{ env.ISSUE_TITLE }}
           ISSUE_BODY: ${{ env.ISSUE_BODY }}
         run: |
@@ -41,34 +34,43 @@ jobs:
           - priority (high, medium, low)
           - the most appropriate team to assign (e.g., frontend, backend, devops)
           - a short summary or first response
-
-          Title: ${ISSUE_TITLE:-No title provided}
-          Body: ${ISSUE_BODY:-No description provided}"
-
+          Title: $ISSUE_TITLE
+          Body:
+          $ISSUE_BODY"
           REQUEST=$(jq -n --arg prompt "$PROMPT" '{
-            "model": "gpt-4-turbo",  # Updated model
-            "messages": [{"role": "user", "content": $prompt}],
-            "temperature": 0.7,
-            "max_tokens": 500
+            "model": "openai/gpt-4o",
+            "messages": [{"role": "user", "content": $prompt}]
           }')
-
-          RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
-            -H "Authorization: Bearer $OPENAI_API_KEY" \
+          RESPONSE=$(curl -s https://models.github.ai/inference/chat/completions \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$REQUEST")
-
-          echo "Full API Response: $RESPONSE"  # Debug log
-
-          AI_RESPONSE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "AI could not generate a response."')
-
+          AI_RESPONSE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
           echo "AI_RESPONSE<<EOF" >> $GITHUB_ENV
           echo "$AI_RESPONSE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
+          ASSIGNED_TEAM=$(echo "$AI_RESPONSE" | grep -i "team to assign" | awk -F ':' '{print $2}' | xargs || true)
+          if [[ "$ASSIGNED_TEAM" == "frontend" ]]; then
+            echo 'ASSIGNEE=org/frontend-team' >> $GITHUB_ENV
+          elif [[ "$ASSIGNED_TEAM" == "backend" ]]; then
+            echo 'ASSIGNEE=org/backend-team' >> $GITHUB_ENV
+          elif [[ "$ASSIGNED_TEAM" == "devops" ]]; then
+            echo 'ASSIGNEE=org/devops-team' >> $GITHUB_ENV
+          else
+            echo 'ASSIGNEE=' >> $GITHUB_ENV
+          fi
+      - name: Assign Issue to Team
+        if: env.ASSIGNEE != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
+          ASSIGNEE: ${{ env.ASSIGNEE }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
       - name: Comment AI Suggestion on Issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AI_RESPONSE: ${{ env.AI_RESPONSE }}
           ISSUE_NUMBER: ${{ env.ISSUE_NUMBER }}
         run: |
-          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body -
+          echo "$AI_RESPONSE" | gh issue comment "$ISSUE_NUMBER" --body-file -
