@@ -1,0 +1,105 @@
+/* Modern site styles for TaxApp */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root{
+  --primary-500: #5b6df0;
+  --primary-700: #4a4fd6;
+  --accent: #764ba2;
+  --muted: #6c757d;
+  --bg: #f6f8ff;
+  --card-bg: #ffffff;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: linear-gradient(180deg, #f6f8ff 0%, #ffffff 100%);
+  color:#222;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+.navbar-brand{
+  font-weight:700;
+  letter-spacing:0.3px;
+}
+
+.container-main{
+  max-width:1100px;
+  margin:0 auto;
+  padding:2.5rem 1rem;
+}
+
+/* Cards */
+.card{
+  border:0;
+  border-radius:12px;
+  background:var(--card-bg);
+  box-shadow:0 6px 18px rgba(34,41,47,0.06);
+}
+
+.card .card-header{background:transparent;border-bottom:0;padding-bottom:0}
+
+/* Buttons */
+.btn-primary, .btn-calculate{
+  background:linear-gradient(135deg,var(--primary-500),var(--primary-700));
+  border:none;
+  color:#fff;
+  box-shadow:0 6px 18px rgba(75,85,255,0.12);
+}
+
+.btn-outline-secondary{
+  border-radius:10px;
+}
+
+.btn:focus{outline:0;box-shadow:0 0 0 0.15rem rgba(91,109,240,0.18)}
+
+/* Input */
+.form-control{
+  border-radius:10px;
+  padding:12px 14px;
+  border:1px solid #e6e9f2;
+}
+
+.form-control:focus{border-color:var(--primary-500);}
+
+/* Hero */
+.hero{
+  background: linear-gradient(90deg, rgba(91,109,240,0.08), rgba(118,75,162,0.04));
+  padding:2rem;
+  border-radius:12px;
+  margin-bottom:1.5rem;
+}
+
+.starter-template h1{font-weight:700;margin-bottom:.5rem}
+.starter-template p{color:var(--muted)}
+
+/* Stat boxes */
+.stat-box{border-radius:12px;padding:18px;color:#fff}
+.stat-value{font-size:28px;font-weight:800}
+.stat-label{font-size:13px;opacity:.9}
+
+.stat-box.primary{background:linear-gradient(135deg,var(--primary-500),var(--accent))}
+.stat-box.green{background:linear-gradient(135deg,#2ecc71,#28a745)}
+
+/* Table */
+.table thead th{background:#fbfbff;border-bottom:0}
+
+/* History */
+.history-card{transition:transform .18s ease,box-shadow .18s ease}
+.history-card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(34,41,47,0.08)}
+
+.footer{
+  margin-top:3rem;
+  padding:2rem 0;
+  text-align:center;
+  color:var(--muted);
+  font-size:14px;
+}
+
+/* Responsive tweaks */
+@media (max-width:768px){
+  .container-main{padding:1rem}
+  .stat-value{font-size:20px}
+}
