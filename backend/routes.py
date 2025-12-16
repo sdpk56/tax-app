@@ -8,6 +8,9 @@ import logging
 logger = logging.getLogger(__name__)
 routes = Blueprint("routes", __name__)
 
+# Marker log for CI/AI PR review testing
+logger.debug("ai_pr_review: routes module loaded (test marker)")
+
 @routes.route("/calculate-tax", methods=["POST"])
 @jwt_required()
 def tax() -> tuple:

@@ -1,5 +1,12 @@
 from typing import Dict, List, Tuple, Optional
 
+# Marker used to trigger and test CI/AI PR review workflows
+AI_PR_TEST = True
+
+def _ai_pr_test_marker() -> str:
+    """Internal no-op used to mark repository changes for CI testing."""
+    return "ai_pr_review_trigger"
+
 def calculate_tax(income: float, regime: str, deductions: float = 0, rebates: Dict = None) -> Dict:
     """
     Calculates income tax based on the provided income and tax regime (old or new).
