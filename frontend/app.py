@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import requests
 import os
 
+# Minimal change for testing AI PR review
+
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-very-secure-secret-key')
 BACKEND_URL = os.getenv('BACKEND_URL', 'http://tax-backend:5000')
