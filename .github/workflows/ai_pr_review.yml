@@ -2,6 +2,7 @@ name: Python AI PR Review
 
 on:
   pull_request:
+  workflow_dispatch: 
     types: [opened, synchronize]
 
 permissions:
